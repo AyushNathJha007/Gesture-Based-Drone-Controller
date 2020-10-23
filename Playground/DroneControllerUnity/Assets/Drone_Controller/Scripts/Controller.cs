@@ -13,6 +13,9 @@ namespace DroneController
         [SerializeField] private float MinMaxPitch = 30f;
         [SerializeField] private float MinMaxRoll = 30f;
         [SerializeField] private float YawPow = 4f;
+        [SerializeField] private float lerper = 2f;
+
+        private float yaw,finalPitch, finalYaw, finalRoll;
 
         private List<IEngine> engines = new List<IEngine>();
         #endregion
@@ -35,7 +38,15 @@ namespace DroneController
 
         protected virtual void SimulateControls()
         {
+            float pitch = Input.GetAxis("Pitch") * MinMaxPitch;
+            float roll = Input.GetAxis("Roll") * MinMaxRoll;
+            yaw += Input.GetAxis("Horizontal") * YawPow;
 
+            finalPitch = Mathf.Lerp(finalPitch, pitch, Time.deltaTime * lerper);
+            finalRoll = Mathf.Lerp(finalRoll, roll, Time.deltaTime * lerper);
+            finalYaw = Mathf.Lerp(finalYaw, yaw, Time.deltaTime * lerper);
+            Quaternion rotate = Quaternion.Euler(finalPitch, finalYaw, finalRoll);
+            rb.MoveRotation(rotate);
         }
 
         protected virtual void SimulateEngines()
