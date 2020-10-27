@@ -14,7 +14,7 @@ namespace DroneController
         [SerializeField] private float MinMaxRoll = 30f;
         [SerializeField] private float YawPow = 4f;
         [SerializeField] private float lerper = 2f;
-
+        //public GameObject controller;
         private float yaw,finalPitch, finalYaw, finalRoll;
 
         private List<IEngine> engines = new List<IEngine>();
@@ -41,6 +41,10 @@ namespace DroneController
             float pitch = Input.GetAxis("Pitch") * MinMaxPitch;
             float roll = Input.GetAxis("Roll") * MinMaxRoll;
             yaw += Input.GetAxis("Horizontal") * YawPow;
+
+            //float pitch = controller.GetComponent<ControlCommunicator>().pitch * MinMaxPitch;
+            //float roll = controller.GetComponent<ControlCommunicator>().roll * MinMaxRoll;
+            //yaw += controller.GetComponent<ControlCommunicator>().yaw * YawPow;
 
             finalPitch = Mathf.Lerp(finalPitch, pitch, Time.deltaTime * lerper);
             finalRoll = Mathf.Lerp(finalRoll, roll, Time.deltaTime * lerper);
