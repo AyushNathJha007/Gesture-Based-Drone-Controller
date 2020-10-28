@@ -1,7 +1,9 @@
 """
-This can be used to measure head pose estimation using
-68 facial landmark detection along with pretrained hog and linear svm
-face detection in dlib.
+UAV Controller Script.
+
+Implements head pose estimation using 68 facial landmark detection.
+The roll pitch and yaw data calculated is used to simulate key presses
+using pynput for controlling any UAV in any simulator.
 """
 
 import time
@@ -12,31 +14,29 @@ import math
 from pynput.keyboard import Key,Controller
 
 keyboard=Controller()
-
-# If True enables the verbose mode
 DEBUG = True
 
 
 def main():
     cap = cv2.VideoCapture(0)
-    time.sleep(2.0)  # to give time to the camera to warm up
+    time.sleep(1.0)
 
     if not cap.isOpened():
         print("Error: Camera is unavailable.")
     else:
         print("Camera Found! Starting feed...")
 
-    # Create the main window and move it
+    #Create Main Window
     cv2.namedWindow('Video')
-    cv2.moveWindow('Video', 20, 20)
+    cv2.moveWindow('Video', 875, 40)
 
     # Declaring the face detector and landmark detector
     face_detector = dlib.get_frontal_face_detector()
     landmark_detector = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
 
-    accumulator_pitch = 0.0
-    accumulator_roll = 0.0
-    accumulator_yaw = 0.0
+    estimated_pitch = 0.0
+    estimated_roll = 0.0
+    estimated_yaw = 0.0
 
     while True:
 
@@ -44,11 +44,10 @@ def main():
         ret, frame = cap.read()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Looking for faces with dlib get_frontal_face detector in the gray scale frame
+        # Search for faces
         faces = face_detector(gray, 0)
 
-        # check to see if a face was detected, and if so, draw the total
-        # number of faces on the frame
+        #Is face detected?
         if len(faces) > 0:
             text = "{} face(s) found".format(len(faces))
             cv2.putText(frame, text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX,
@@ -99,10 +98,10 @@ def main():
                 (0.0, 140.0, 0.0)
             ])
 
-            # image properties. channels is not needed so _ is to drop the value
+            
             height, width, _ = frame.shape
 
-            # Camera internals double
+            # Camera internals
             focal_length = width
             center = np.float32([width / 2, height / 2])
             camera_matrix = np.float32([[focal_length, 0.0, center[0]],
@@ -123,97 +122,112 @@ def main():
             euler_angles = getEulerAngles(rotCamerMatrix)
 
             # Filter angle
-            accumulator_pitch = (0.5 * euler_angles[0]) + (1.0 - 0.5) * accumulator_pitch
-            accumulator_yaw = (0.5 * euler_angles[1]) + (1.0 - 0.5) * accumulator_yaw
-            accumulator_roll = (0.5 * euler_angles[2]) + (1.0 - 0.5) * accumulator_roll
+            estimated_pitch = (0.5 * euler_angles[0]) + (1.0 - 0.5) * estimated_pitch
+            estimated_yaw = (0.5 * euler_angles[1]) + (1.0 - 0.5) * estimated_yaw
+            estimated_roll = (0.5 * euler_angles[2]) + (1.0 - 0.5) * estimated_roll
 
-            euler_angles[0] = accumulator_pitch
-            euler_angles[1] = accumulator_yaw
-            euler_angles[2] = accumulator_roll
-
-            # TODO: Draw head angles
-            # renderHeadAngles(frame, rvec, tvec, camera_matrix)
+            euler_angles[0] = estimated_pitch
+            euler_angles[1] = estimated_yaw
+            euler_angles[2] = estimated_roll
 
             # Draw used points for head pose estimation
             for point in image_points:
                 print(point[0])
                 cv2.circle(frame, (point[0], point[1]), 3, (255, 0, 255), -1)
             
-            SmileIndex=Mouth(shape)
+            MouthIndex=Mouth(shape)
             # Draw face angles
-            pitch = "Pitch: {}".format(accumulator_pitch)
-            yaw = "Yaw: {}".format(accumulator_yaw)
-            roll = "Roll: {}".format(accumulator_roll)
-            SmileInd="Smile: {}".format(SmileIndex)
+            pitch = "EPitch: {}".format(estimated_pitch)
+            yaw = "EYaw: {}".format(estimated_yaw)
+            roll = "ERoll: {}".format(estimated_roll)
+            MouthInd="MI: {}".format(MouthIndex)
 
             cv2.putText(frame, pitch, (left, bottom + 20), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5, (0, 0, 255), 2)
+                        0.5, (255, 0, 0), 2)
             cv2.putText(frame, yaw, (left, bottom + 40), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (0, 255, 0), 2)
             cv2.putText(frame, roll, (left, bottom + 60), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5, (255, 0, 0), 2)
-            cv2.putText(frame, SmileInd, (left, bottom + 80), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 255), 2)
+            cv2.putText(frame, MouthInd, (left, bottom + 80), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (255, 0, 255), 2)
             
             
+            '''The four if blocks below are used to specify key presses
+            and releases which are to be simulated when specific estimated values
+            for roll, pitch, yaw as well as mouth index cross a 
+            specified threshold value. Change them as per the controls of
+            the game/simulator being used.'''
+            
+            pitch_threshold_neg=7
+            pitch_threshold_pos=20
+            roll_threshold_neg=-10
+            roll_threshold_pos=10
+            yaw_threshold_neg=-20
+            yaw_threshold_pos=20
+            MouthInd_threshold=0.37
+            
             s=''
-            if accumulator_pitch<5:
+            
+            #Simulates input for pitch control of drone
+            if estimated_pitch<pitch_threshold_neg:
                 keyboard.release('s')
                 keyboard.press('w')
+                cv2.putText(frame, "Pitch(W)", (10, 75), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 255, 0), 2)
                 s='U'
-            elif accumulator_pitch>20:
+            elif estimated_pitch>pitch_threshold_pos:
                 keyboard.release('w')
                 keyboard.press('s')
+                cv2.putText(frame, "Pitch(S)", (10, 75), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 255), 2)
                 s='D'
             else:
                 keyboard.release('w')
                 keyboard.release('s')
                 s='N'
                 
-        
-            '''if image_points[0][0]<300 and image_points[1][0]<300 and ang2>30:
-                s+='L'
-            elif image_points[0][0]>340 and image_points[1][0]>340 and ang2<-40:
-                s+='R'
-            else:
-                s+='N'
-        
-            if ang2>30:
-                s+='L'
-            elif ang2<-40:
-                s+='R'
-            else:
-                s+='N'
-                '''
             
-            if accumulator_roll<-10:
+            #Simulates input for roll control of drone
+            if estimated_roll<roll_threshold_neg:
                 keyboard.release('d')
                 keyboard.press('a')
+                cv2.putText(frame, "Roll(A)", (10, 95), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 255, 0), 2)
                 s+='L'
-            elif accumulator_roll>10:
+            elif estimated_roll>roll_threshold_pos:
                 keyboard.release('a')
                 keyboard.press('d')
+                cv2.putText(frame, "Roll(D)", (10, 95), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 255), 2)
                 s+='R'
             else:
                 keyboard.release('a')
                 keyboard.release('d')
                 s+='N'
             
-            if accumulator_yaw<-20:
+            #Simulates input for yaw control of drone
+            if estimated_yaw<yaw_threshold_neg:
                 keyboard.release(Key.right)
                 keyboard.press(Key.left)
+                cv2.putText(frame, "Yaw(<-)", (10, 115), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 255, 0), 2)
                 s+='L'
-            elif accumulator_yaw>20:
+            elif estimated_yaw>yaw_threshold_pos:
                 keyboard.release(Key.left)
                 keyboard.press(Key.right)
+                cv2.putText(frame, "Yaw(->)", (10, 115), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 255), 2)
                 s+='R'
             else:
                 keyboard.release(Key.left)
                 keyboard.release(Key.right)
                 s+='N'
-                
-            if SmileIndex>0.35:
+              
+            #Used to simulate input for upward thrust
+            if MouthIndex>MouthInd_threshold:
                 keyboard.press(Key.up)
+                cv2.putText(frame, "Lift Up", (10, 135), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 255, 0), 2)
             else:
                 keyboard.release(Key.up)
             
@@ -224,8 +238,7 @@ def main():
             
             for (i, (x, y)) in enumerate(landmark_coords):
                 cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
-                cv2.putText(frame, str(i + 1), (x - 10, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+                
 
         
         cv2.imshow('Video', frame)
@@ -245,6 +258,8 @@ def main():
     print("Exiting...")
 
 
+
+#Calculate pitch, roll and yaw from rotation matrix
 def getEulerAngles(camera_rot_matrix):
     rt = cv2.transpose(camera_rot_matrix)
     shouldBeIdentity = np.matmul(rt, camera_rot_matrix)
@@ -279,6 +294,7 @@ def getEulerAngles(camera_rot_matrix):
 
     return euler_angles
 
+#Calculte Mouth Index
 def Mouth(shape):
     vert=abs(shape.part(51).y-shape.part(57).y)
     horiz=abs(shape.part(48).x-shape.part(54).x)
