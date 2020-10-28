@@ -19,7 +19,7 @@ Simulating a drone controller using head pose estimation and facial landmark det
   ```
 3. Focus back on the Game Tab in Unity. Move your head to control the roll, pitch and yaw of the drone in accordance to the given diagrams. Open mouth for upward thrust.
 
-![Head](Head.jpg) ![Drone](Drone.png)
+![Head](Media/Head.jpg) ![Media/Drone](Drone.png)
 
 
 
