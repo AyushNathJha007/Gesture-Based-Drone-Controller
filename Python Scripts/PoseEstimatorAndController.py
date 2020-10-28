@@ -40,7 +40,7 @@ def main():
 
     while True:
 
-        # Capture frame-by-frame
+        
         ret, frame = cap.read()
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -69,9 +69,11 @@ def main():
             cv2.rectangle(frame, (left, top), (right, bottom),
                           (0, 255, 0), 1)
 
-            # determine the facial landmarks for the face region, then
-            # convert the facial landmark (x, y)-coordinates to a NumPy array
+            # determine the facial landmarks for the face region
+            
             shape = landmark_detector(gray, face)
+            
+            # convert the facial landmark (x, y)-coordinates to a NumPy array
             landmark_coords = np.zeros((shape.num_parts, 2), dtype="int")
 
             # 2D model points
